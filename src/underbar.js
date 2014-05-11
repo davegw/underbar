@@ -47,7 +47,7 @@ var _ = {};
   //
   // Note: _.each does not have a return value, but rather simply runs the
   // iterator function over each item in the input collection.
-    _.each = function(collection, iterator) {
+  _.each = function(collection, iterator) {
     if (collection.length) {
       for (var i=0; i<collection.length; i++) {
         iterator(collection[i], i, collection);
@@ -116,8 +116,8 @@ var _ = {};
     // like each(), but in addition to running the operation on all
     // the members, it also maintains an array of results.
     var mapArray = []
-    _.each(collection, function(item) {
-      mapArray.push(iterator(item));
+    _.each(collection, function(item, index) {
+      mapArray.push(iterator(item, index));
     });
     return mapArray;
   };
@@ -144,7 +144,7 @@ var _ = {};
   // Note: you will nead to learn a bit about .apply to complete this.
   _.invoke = function(collection, functionOrKey, args) {  
     return _.map(collection, function(item) {
-      return (typeof functionOrKey === "function" ? functionOrKey : item[functionOrKey]).apply(item, collection)
+      return (typeof functionOrKey === "function" ? functionOrKey : item[functionOrKey]).apply(item, args)
     })
   };
 
@@ -162,6 +162,13 @@ var _ = {};
   //     return total + number;
   //   }, 0); // should be 6
   _.reduce = function(collection, iterator, accumulator) {
+    accumulator = accumulator || 0;
+    _.each(collection, function(item) {
+      // Set accumulator to the current value of iterator.
+      // Iterator will run again using the new value of accumulator and the next item.
+      accumulator = iterator(accumulator, item);
+    });
+    return accumulator;
   };
 
   // Determine if the array or object contains a given value (using `===`).
@@ -180,12 +187,36 @@ var _ = {};
   // Determine whether all of the elements match a truth test.
   _.every = function(collection, iterator) {
     // TIP: Try re-using reduce() here.
+    // Handle empty iterator edge case.
+    if (!iterator) {
+      return true;
+    }
+    return _.reduce(collection, function(allFound, item) {
+      // If previous item was not found, continue returning false for remainder of reduce function.
+      if (!allFound) {
+        return false;
+      }
+      // Otherwise test the next item in iterator function.
+      return !(iterator(item) == null || iterator(item) == false) ;
+    }, true);
   };
 
   // Determine whether any of the elements pass a truth test. If no iterator is
   // provided, provide a default one
   _.some = function(collection, iterator) {
     // TIP: There's a very clever way to re-use every() here.
+    // Handle empty array edge case.
+    if (collection.length === 0) {
+      return false;
+    }
+    return _.reduce(collection, function(foundOne, item) {
+      // If previous item was found, continue returning true for remainder of reduce function.
+      if (foundOne) {
+        return true;
+      }
+      // Otherwise use every function to test next item in iterator function.
+      return _.every([item], iterator);
+    }, false);
   };
 
 
@@ -208,11 +239,30 @@ var _ = {};
   //     bla: "even more stuff"
   //   }); // obj1 now contains key1, key2, key3 and bla
   _.extend = function(obj) {
+    // Get all arguments passed beside the obj argument.
+    var argArray = Array.prototype.slice.call(arguments, 1)
+    // For each argument, get each item in the argument.
+    _.each(argArray, function(argItem) {
+      // For each item in argument, add or replace the property and value to obj.
+      _.each(argItem, function(value, property) {
+        obj[property] = value;
+      })
+    });
+    return obj;
   };
 
   // Like extend, but doesn't ever overwrite a key that already
   // exists in obj
   _.defaults = function(obj) {
+    var argArray = Array.prototype.slice.call(arguments, 1);
+    // For each argument, get each item in the argument.
+    _.each(argArray, function(argItem) {
+      // For each item in argument, check if item is in obj and add to obj if it does not already exist.
+      _.each(argItem, function(value, property) {
+        (property in obj) || (obj[property] = value);
+      })
+    });
+    return obj;
   };
 
 
@@ -254,6 +304,17 @@ var _ = {};
   // already computed the result for the given argument and return that value
   // instead if possible.
   _.memoize = function(func) {
+    var argObj = {};
+    return function() {
+      var arg = arguments[0];
+      // Check if func has been run using the argument before.
+      if (!(arg in argObj)) {
+        // Run the function and store the argument and value.
+        argObj[arg] = func.apply(this, arguments)
+      }
+      // Return the stored value for the argument.
+      return argObj[arg];
+    }
   };
 
   // Delays a function for the given number of milliseconds, and then calls
@@ -263,6 +324,13 @@ var _ = {};
   // parameter. For example _.delay(someFunction, 500, 'a', 'b') will
   // call someFunction('a', 'b') after 500ms
   _.delay = function(func, wait) {
+    // Store the arguments from the original function.
+    var args = Array.prototype.slice.call(arguments, 2);
+    setTimeout(function() {
+      // Apply the stored arguments to func.
+      func.apply(this, args);
+    },
+    wait);
   };
 
 
@@ -277,6 +345,26 @@ var _ = {};
   // input array. For a tip on how to make a copy of an array, see:
   // http://mdn.io/Array.prototype.slice
   _.shuffle = function(array) {
+    var randomArray = array.slice();
+    var shuffleArray = array.slice();
+    // Create an array of objects containing random values and the original array values.
+    randomArray = _.map(randomArray, function(item) {
+      return {randomIndex : Math.random(), value : item};
+    })
+    // Sort the randomArray by randomIndex value.
+    randomArray.sort(function(a,b) {
+      if (a.randomIndex - b.randomIndex < 0) {
+        return -1;
+      }
+      if (a.randomIndex - b.randomIndex > 0) {
+        return 1
+      };
+      return 0;
+    });
+    // Map the sorted random values in randomArray onto shuffleArray.
+    return _.map(shuffleArray, function(item, index) {
+      return randomArray[index]["value"];
+    });
   };
 
 
