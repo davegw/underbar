@@ -390,22 +390,18 @@ var _ = {};
 
       // Combine collection values with values to sort as objects.
       sortArray = _.map(sortArray, function(item, index) {
-        return {orig : item, mapped : mapArray[index]};
+        return {orig : item, index : index, mapped : mapArray[index]};
       });
 
       // Sort the combined array using the values to sort.
-      sortArray.sort(function(a,b) {
-        if (a.mapped == b.mapped) {
-          return 0;
+      sortArray.sort(function(left, right) {
+        var a = left.mapped;
+        var b = right.mapped;
+        if (a !== b) {
+          if (a > b || a === void 0) return 1;
+          if (a < b || b === void 0) return -1;
         }
-        // Null and undefined arguments always get sorted to end of array.
-        if (a.mapped == null) {
-          return 1;
-        };
-        if (b.mapped == null) {
-          return -1;
-        };
-        return (a.mapped > b.mapped ? 1 : -1);
+        return left.index - right.index;
       });
 
       // Remove the values to sort and return only the collection values, now properly sorted.
@@ -533,18 +529,19 @@ var _ = {};
   //
   // See the Underbar readme for details.
   _.throttle = function(func, wait) {
-    var result, lastCalled = 0, timeout;
+    var result, lastCalled = 0, timeout, args;
     var ready = true;
     // Runs the function and resets variables.
     var runFunc = function() {
       ready = false;
       lastCalled = Date.now();
       timeout = null;
-      result = func.apply(this, arguments);
+      result = func.apply(this, args);
     }
-    
+
     return function() {
       var remaining = wait - (Date.now() - lastCalled);
+      args = arguments;
       // Run the function if it's first function call or wait has expired.
       if (ready || remaining < 0) {
         runFunc();
