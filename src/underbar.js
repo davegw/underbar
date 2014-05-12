@@ -345,22 +345,24 @@ var _ = {};
   // input array. For a tip on how to make a copy of an array, see:
   // http://mdn.io/Array.prototype.slice
   _.shuffle = function(array) {
-    var randomArray = array.slice();
-    var shuffleArray = array.slice();
+    var randomArray = array;
+    var shuffleArray = array;
     // Create an array of objects containing random values and the original array values.
     randomArray = _.map(randomArray, function(item) {
       return {randomIndex : Math.random(), value : item};
-    })
+    });
+
     // Sort the randomArray by randomIndex value.
     randomArray.sort(function(a,b) {
       if (a.randomIndex - b.randomIndex < 0) {
         return -1;
       }
       if (a.randomIndex - b.randomIndex > 0) {
-        return 1
+        return 1;
       };
       return 0;
     });
+
     // Map the sorted random values in randomArray onto shuffleArray.
     return _.map(shuffleArray, function(item, index) {
       return randomArray[index]["value"];
@@ -379,6 +381,47 @@ var _ = {};
   // of that string. For example, _.sortBy(people, 'name') should sort
   // an array of people by their name.
   _.sortBy = function(collection, iterator) {
+    if (typeof iterator === "function") {
+      var mapArray = [];
+      var sortArray = collection;
+
+      // Create array of only values to sort.
+      mapArray = _.map(collection, iterator);
+
+      // Combine collection values with values to sort as objects.
+      sortArray = _.map(sortArray, function(item, index) {
+        return {orig : item, mapped : mapArray[index]};
+      });
+
+      // Sort the combined array using the values to sort.
+      sortArray.sort(function(a,b) {
+        if (a.mapped == b.mapped) {
+          return 0;
+        }
+        // Null and undefined arguments always get sorted to end of array.
+        if (a.mapped == null) {
+          return 1;
+        };
+        if (b.mapped == null) {
+          return -1;
+        };
+        return (a.mapped > b.mapped ? 1 : -1);
+      });
+
+      // Remove the values to sort and return only the collection values, now properly sorted.
+      return _.map(sortArray, function(item) {
+        return item["orig"];
+      });
+    }
+
+    // Sort if iterator is a string.
+    return collection.sort(function(a,b) {
+      if (a == b) {return 0;};
+      // Null and undefined arguments always get sorted to end of array.
+      if (a == null) {return 1;};
+      if (b == null) {return -1;};
+      return a[iterator] > b[iterator] ? 1 : -1;
+    })
   };
 
   // Zip together two or more arrays with elements of the same index
@@ -387,6 +430,31 @@ var _ = {};
   // Example:
   // _.zip(['a','b','c','d'], [1,2,3]) returns [['a',1], ['b',2], ['c',3], ['d',undefined]]
   _.zip = function() {
+    var argsArray = Array.prototype.slice.call(arguments, 0);
+    var array = [];
+
+    // Set the array length equal to the longest argument's length.
+    array.length = _.reduce(argsArray, function(largest, item) {
+      if (item.length > largest) {
+        largest = item.length;
+      }
+      return largest;
+    }, 0);
+
+    return _.map(array, function(item, index) {
+      var tempArr = [];
+      // For each argument array, add element value to array. 
+      _.each(argsArray, function(argArray, argIndex) {
+        if (index < argArray.length) {
+          tempArr.push(argArray[index]);
+        }
+        // If there are no more elements in the argument array add undefined to array.
+        else {
+          tempArr.push(undefined);
+        }
+      });
+      return tempArr;
+    });
   };
 
   // Takes a multidimensional array and converts it to a one-dimensional array.
@@ -394,16 +462,64 @@ var _ = {};
   //
   // Hint: Use Array.isArray to check if something is an array
   _.flatten = function(nestedArray, result) {
+    // Set result to empty array if it has not been defined.
+    result = result || [];
+    _.each(nestedArray, function(item, index) {
+      // If item is an array item, run flatten on the item again otherwise add item to result.
+      if (Array.isArray(item)) {
+        return _.flatten(item, result);
+      }
+      else {
+        return result.push(item);        
+      }
+    });
+    return result;
   };
 
   // Takes an arbitrary number of arrays and produces an array that contains
   // every item shared between all the passed-in arrays.
   _.intersection = function() {
+    var args = Array.prototype.slice.call(arguments, 0);
+
+    // Handle edge cases when there are no or one argument.
+    if (args.length < 2) {
+      return (args.length === 1 ? args[0] : []);
+    }
+
+    var intersectedArray = args[0];
+    var compareArrays = args.slice(1);
+
+    _.each(compareArrays, function(array, arrIndex) {
+      // Add item to intersectedArray if item is in intersectedArray.
+      intersectedArray = _.filter(array, function(item) {
+        if (_.indexOf(intersectedArray, item) !== -1) {
+          return item;
+        }
+      });
+    });
+    return intersectedArray;
   };
 
   // Take the difference between one array and a number of other arrays.
   // Only the elements present in just the first array will remain.
   _.difference = function(array) {
+    var args = Array.prototype.slice.call(arguments, 1);
+
+    // Handle edge case where no comparison arrays are provided.
+    if (args.length < 1) {
+      return array;
+    }
+
+    var differenceArray = array;
+    _.each(args, function(argArray, argIndex) {
+      // If differenceArray item is not in argArray, add to differenceArray.
+      differenceArray = _.filter(differenceArray, function(item, index) {
+        if(_.indexOf(argArray, item) === -1) {
+          return item;
+        }
+      });
+    });
+    return differenceArray;
   };
 
 
