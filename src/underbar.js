@@ -533,6 +533,33 @@ var _ = {};
   //
   // See the Underbar readme for details.
   _.throttle = function(func, wait) {
+    var result, lastCalled = 0, timeout;
+    var ready = true;
+    // Runs the function and resets variables.
+    var runFunc = function() {
+      ready = false;
+      lastCalled = Date.now();
+      timeout = null;
+      result = func.apply(this, arguments);
+    }
+    
+    return function() {
+      var remaining = wait - (Date.now() - lastCalled);
+      // Run the function if it's first function call or wait has expired.
+      if (ready || remaining < 0) {
+        runFunc();
+      }
+      // Don't schedule another function call if timeout has already been set.
+      else if (timeout) {}
+      // Schedule function to run after timeout expires.
+      else {
+        timeout = remaining;
+        setTimeout(function() {
+          runFunc();
+        }, timeout);
+      }
+      return result;
+    }
   };
 
 }).call(this);
